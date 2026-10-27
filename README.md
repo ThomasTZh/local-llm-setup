@@ -134,7 +134,9 @@ The full asset record is in [`image-gen/manifest.json`](image-gen/manifest.json)
 
 - Everything that matters runs locally: inference, search, crawl, image generation.
 - Models are pinned by revision and hash; container images by digest, so a
-  re-tagged upstream release cannot silently replace what is installed.
+  re-tagged upstream release cannot silently replace what is installed. The
+  rebuild scripts use image tags; pin the digests yourself if you want the same
+  guarantee.
 - The router holds no VRAM when idle and never keeps two models in memory.
 - Backend services stay on loopback, and the Web UI requires authentication.
 - Text and image workloads have separate lifecycles, so an image job cannot
@@ -142,12 +144,34 @@ The full asset record is in [`image-gen/manifest.json`](image-gen/manifest.json)
 - One binary covers two GPU architectures, with the device order fixed so the
   layer split is always read the same way.
 
+## Rebuild it yourself
+
+Everything needed to stand this up on similar hardware is in this repository:
+pinned engine commit, pinned weights with hashes, the router preset, and the
+service units.
+
+| Step | Command | What it does |
+|---|---|---|
+| 0 | `bash setup/preflight.sh` | checks GPUs, toolkit, disk, memory |
+| 1 | `bash setup/build-llama.sh` | builds llama.cpp at the pinned commit |
+| 2 | `bash setup/download-models.sh` | fetches 34 GB of weights and verifies every hash |
+| 3 | `bash setup/router/install-router.sh`, then `start-router.sh` | renders the preset, serves three models |
+| 4 | `bash setup/verify.sh --load` | proves it end to end with one generation |
+| 5 | `bash setup/web-stack/install-web-stack.sh` | optional: private search and crawl |
+| 6 | [`setup/image-gen/README.md`](setup/image-gen/README.md) | optional: ComfyUI image generation |
+
+Requirements, the tuning points for different cards, and the short list of steps
+that were not executed on the recorded machine are in
+[`setup/README.md`](setup/README.md).
+
 ## The rest of this repository
 
-The prose above is the readable layer. Two kinds of file sit underneath it:
+The prose above is the readable layer. Underneath it sit two kinds of file: a
+runnable recipe and machine-checkable records.
 
-| File | Purpose |
+| Path | Purpose |
 |---|---|
+| [`setup/`](setup/README.md) | Scripts and config to rebuild the deployment, start to finish |
 | [`config/profiles.json`](config/profiles.json) | The profile settings the launcher reads, with local paths and device identifiers removed |
 | [`models/manifest.json`](models/manifest.json) | Download record: sources, byte counts, and hashes for the weights |
 | [`web-stack/images.json`](web-stack/images.json) | Container versions and tags, without digests |

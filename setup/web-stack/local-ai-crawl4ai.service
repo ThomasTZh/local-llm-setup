@@ -1,0 +1,17 @@
+[Unit]
+Description=Private local Crawl4AI retrieval service
+Documentation=https://github.com/unclecode/crawl4ai/blob/main/deploy/docker/README.md
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/podman run --replace --rm --name local-ai-crawl4ai --pull=never --label local-ai.web-stack=crawl4ai --publish 127.0.0.1:11235:11235 --memory=4g --memory-swap=4g --pids-limit=1024 --cpus=4 --shm-size=1g --env-file %h/.config/local-ai/web-stack/crawl4ai.env --env CRAWL4AI_HOOKS_ENABLED=false --env CRAWL4AI_ALLOW_INTERNAL_URLS=false --env CRAWL4AI_ALLOW_INSECURE_TLS=false docker.io/unclecode/crawl4ai:0.9.4
+ExecStop=/usr/bin/podman stop --time 30 local-ai-crawl4ai
+Restart=on-failure
+RestartSec=5
+TimeoutStartSec=240
+TimeoutStopSec=45
+
+[Install]
+WantedBy=default.target

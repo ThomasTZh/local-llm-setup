@@ -1,0 +1,18 @@
+[Unit]
+Description=llama.cpp catalogue router (idle until the first request)
+After=network-online.target
+Wants=network-online.target
+Documentation=https://github.com/ThomasZhangTY/local-llm-setup
+
+[Service]
+Type=simple
+# Adjust both paths if the recipe is not installed in ~/local-llm-setup.
+Environment=AI_HOME=%h/local-llm-setup
+ExecStart=%h/local-llm-setup/setup/router/start-router.sh
+Restart=on-failure
+RestartSec=5
+TimeoutStartSec=120
+TimeoutStopSec=60
+
+[Install]
+WantedBy=default.target

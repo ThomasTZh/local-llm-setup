@@ -1,0 +1,17 @@
+[Unit]
+Description=Private local SearXNG search service
+Documentation=https://docs.searxng.org/admin/installation-docker.html
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/podman run --replace --rm --name local-ai-searxng --pull=never --label local-ai.web-stack=searxng --publish 127.0.0.1:8888:8080 --memory=768m --memory-swap=768m --pids-limit=384 --env SEARXNG_BASE_URL=http://127.0.0.1:8888/ --volume %h/.config/local-ai/web-stack/searxng-settings.yml:/etc/searxng/settings.yml:ro,Z ghcr.io/searxng/searxng:2026.9.25-12f8b6515
+ExecStop=/usr/bin/podman stop --time 20 local-ai-searxng
+Restart=on-failure
+RestartSec=5
+TimeoutStartSec=180
+TimeoutStopSec=30
+
+[Install]
+WantedBy=default.target

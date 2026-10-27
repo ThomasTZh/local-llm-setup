@@ -1,0 +1,161 @@
+{
+  "providers": {
+    "llama-cpp": {
+      "name": "llama.cpp · local Qwen3.8/Gemma-4 catalogue · dual GPU",
+      "baseUrl": "http://127.0.0.1:8080/v1",
+      "api": "openai-completions",
+      "apiKey": "local-llama",
+      "models": [
+        {
+          "id": "swift-1.5-qwen3.8-27b-q4-k-s",
+          "name": "Swift 1.5 Qwen3.8-27B Q4_K_S · 212K",
+          "reasoning": true,
+          "input": [
+            "text"
+          ],
+          "contextWindow": 217088,
+          "maxTokens": 217088,
+          "thinkingLevelMap": {
+            "off": "none",
+            "low": "low",
+            "medium": "medium",
+            "xhigh": "xhigh",
+            "minimal": null,
+            "high": null,
+            "max": null
+          },
+          "compat": {
+            "supportsStore": false,
+            "supportsDeveloperRole": false,
+            "supportsReasoningEffort": false,
+            "supportsUsageInStreaming": true,
+            "supportsStrictMode": false,
+            "maxTokensField": "max_tokens",
+            "thinkingFormat": "chat-template",
+            "chatTemplateKwargs": {
+              "enable_thinking": {
+                "$var": "thinking.enabled"
+              },
+              "reasoning_effort": {
+                "$var": "thinking.effort",
+                "omitWhenOff": true
+              }
+            }
+          }
+        },
+        {
+          "id": "gemma-4-31b-it-qat-q4-0-uncensored-heretic-q4-0",
+          "name": "Gemma-4-31B QAT Q4_0 Uncensored Heretic · 64K",
+          "reasoning": true,
+          "input": [
+            "text"
+          ],
+          "contextWindow": 65536,
+          "maxTokens": 65536,
+          "thinkingLevelMap": {
+            "off": "none",
+            "low": "low",
+            "medium": "medium",
+            "xhigh": "xhigh",
+            "minimal": null,
+            "high": null,
+            "max": null
+          },
+          "compat": {
+            "supportsStore": false,
+            "supportsDeveloperRole": false,
+            "supportsReasoningEffort": false,
+            "supportsUsageInStreaming": true,
+            "supportsStrictMode": false,
+            "maxTokensField": "max_tokens",
+            "thinkingFormat": "chat-template",
+            "chatTemplateKwargs": {
+              "enable_thinking": {
+                "$var": "thinking.enabled"
+              },
+              "reasoning_effort": {
+                "$var": "thinking.effort",
+                "omitWhenOff": true
+              }
+            }
+          }
+        },
+        {
+          "id": "swift-1.5-qwen3.8-27b-q4-k-s-vision",
+          "name": "Swift 1.5 Qwen3.8-27B Q4_K_S · Vision · 176K",
+          "reasoning": true,
+          "input": [
+            "text",
+            "image"
+          ],
+          "contextWindow": 180224,
+          "maxTokens": 180224,
+          "thinkingLevelMap": {
+            "off": "none",
+            "low": "low",
+            "medium": "medium",
+            "xhigh": "xhigh",
+            "minimal": null,
+            "high": null,
+            "max": null
+          },
+          "compat": {
+            "supportsStore": false,
+            "supportsDeveloperRole": false,
+            "supportsReasoningEffort": false,
+            "supportsUsageInStreaming": true,
+            "supportsStrictMode": false,
+            "maxTokensField": "max_tokens",
+            "thinkingFormat": "chat-template",
+            "chatTemplateKwargs": {
+              "enable_thinking": {
+                "$var": "thinking.enabled"
+              },
+              "reasoning_effort": {
+                "$var": "thinking.effort",
+                "omitWhenOff": true
+              }
+            }
+          }
+        }
+      ]
+    },
+    "ollama": {
+      "name": "Ollama · local Qwen3.8",
+      "baseUrl": "http://127.0.0.1:11434/v1",
+      "api": "openai-completions",
+      "apiKey": "local-llama",
+      "models": [
+        {
+          "id": "qwen3.8-27b-q4:latest",
+          "name": "Qwen3.8-27B Q4_K_M · Ollama · 128K",
+          "reasoning": true,
+          "input": [
+            "text",
+            "image"
+          ],
+          "contextWindow": 131072,
+          "maxTokens": 131072,
+          "thinkingLevelMap": {
+            "off": "none",
+            "medium": "medium",
+            "minimal": null,
+            "low": null,
+            "high": null,
+            "xhigh": null,
+            "max": null
+          },
+          "compat": {
+            "supportsStore": false,
+            "supportsDeveloperRole": false,
+            "supportsReasoningEffort": true,
+            "supportsUsageInStreaming": true,
+            "supportsStrictMode": false,
+            "maxTokensField": "max_tokens",
+            "thinkingFormat": "openai"
+          }
+        }
+      ]
+    }
+  }
+}
