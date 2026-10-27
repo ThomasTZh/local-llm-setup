@@ -42,14 +42,15 @@ uv pip install --python .venv/bin/python -r runtime/ComfyUI/requirements.txt -r 
 | VAE | `qwen_image_2.1_vae_bf16.safetensors` | 675,509,688 |
 
 Download them from `webmp3/Sakura-Qwen-Image-2.1-Turbo-Uncensored-GGUF`, then check
-each against the SHA-256 in the manifest:
+each against the SHA-256 in the manifest. Run this from the directory that holds
+`models/`, because the manifest records paths relative to it:
 
 ```bash
 sha256sum -c --ignore-missing <(python3 -c "
 import json
 m = json.load(open('../../image-gen/manifest.json'))
 for a in m['model']['assets']:
-    print(a['sha256'] + '  ' + a['localPath'].split('/')[-1])
+    print(a['sha256'] + '  ' + a['localPath'])
 ")
 ```
 
