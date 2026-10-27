@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 2,
+  "downloadedAt": "2026-09-27T11:46:00+01:00",
+  "sources": [
+    {
+      "repository": "ukisai/Swift-1.5-Qwen3.8-27B-GGUF",
+      "revision": "a1614465cfa35d04d3e8575d713fa779662b5eab",
+      "files": [
+        {
+          "filename": "Swift-1.5-Qwen3.8-27B-Q4_K_S.gguf",
+          "bytes": 16363513536,
+          "sha256": "46a360c2cdde61b044c0ec188aaca9127689ab0e2418e870de6127e47345ac2c"
+        },
+        {
+          "filename": "mmproj-Swift-1.5-Qwen3.8-27B-F16.gguf",
+          "bytes": 927606976,
+          "sha256": "daa1116c9422fa390cc8688495da0e91781f92841dfc3b31a378ff252571745a"
+        }
+      ]
+    },
+    {
+      "repository": "llmfan46/gemma-4-31B-it-qat-q4_0-uncensored-heretic-GGUF",
+      "revision": "053a14eaa2fb22e77f139d1adc5cb31960348765",
+      "files": [
+        {
+          "filename": "gemma-4-31B-it-qat-q4_0-uncensored-heretic-Q4_0.gguf",
+          "bytes": 17651005696,
+          "sha256": "b51c17e9011abaf08158f9534be1b21f0cde4999a4a064c8d5286f4e2b2c37fa"
+        }
+      ]
+    }
+  ]
+}

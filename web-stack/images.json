@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 2,
+  "architecture": "linux/amd64",
+  "recordedAt": "2026-09-27",
+  "note": "Versions only. The deployment pins each image by manifest digest; those digests are omitted from this public copy.",
+  "images": {
+    "searxng": {
+      "version": "2026.9.25-12f8b6515",
+      "repository": "ghcr.io/searxng/searxng",
+      "tag": "2026.9.25-12f8b6515",
+      "source": "https://github.com/searxng/searxng/pkgs/container/searxng/versions"
+    },
+    "crawl4ai": {
+      "version": "0.9.4",
+      "repository": "docker.io/unclecode/crawl4ai",
+      "tag": "0.9.4",
+      "source": "https://hub.docker.com/r/unclecode/crawl4ai/tags?name=0.9.4"
+    }
+  }
+}

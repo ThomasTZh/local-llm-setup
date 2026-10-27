@@ -1,0 +1,117 @@
+{
+  "schemaVersion": 1,
+  "created": "2026-09-27",
+  "runtime": {
+    "python": "3.13.14",
+    "comfyui": {
+      "repository": "https://github.com/Comfy-Org/ComfyUI.git",
+      "release": "v0.37.0",
+      "revision": "73c9bad4d21e7addbe1d13bc92eee0f1431b017d"
+    },
+    "comfyuiGguf": {
+      "repository": "https://github.com/leejet/ComfyUI-GGUF.git",
+      "revision": "373048b8403a7820620065210a691263d4da0a61"
+    },
+    "workflowTemplates": {
+      "repository": "https://github.com/Comfy-Org/workflow_templates.git",
+      "package": "comfyui-workflow-templates==0.11.66",
+      "repositoryRevisionObservedAtInstall": "9b912856b25a8564632b20857aa6353fbf78eb5a"
+    },
+    "pytorch": "2.13.0+cu130",
+    "pytorchIndex": "https://download.pytorch.org/whl/test/cu130"
+  },
+  "model": {
+    "repository": "webmp3/Sakura-Qwen-Image-2.1-Turbo-Uncensored-GGUF",
+    "revision": "583e2bf97f2df7b6e194df07a2f4d8185d7989c1",
+    "architecture": "qwen_image21",
+    "license": "Qwen Research License",
+    "licenseFile": "LICENSE-QWEN-RESEARCH",
+    "licenseSha256": "8dc973f024ff95966bea25866efa443fd16776dcb1001e681e3d467ea572b28d",
+    "assets": [
+      {
+        "component": "diffusion",
+        "repositoryPath": "Sakura-Image-2.1-Turbo-Q4_K_M-3.77GiB.gguf",
+        "localPath": "models/diffusion_models/Sakura-Image-2.1-Turbo-Q4_K_M-3.77GiB.gguf",
+        "size": 4050932768,
+        "sha256": "69cba542d67cfac5527cf466400bc0e8615f928c2074624c99120c36366f2961"
+      },
+      {
+        "component": "text_encoder",
+        "repositoryPath": "Sakura-TextEncoder-Qwen3VL-8B-Uncensored-bf16.safetensors",
+        "localPath": "models/text_encoders/Sakura-TextEncoder-Qwen3VL-8B-Uncensored-bf16.safetensors",
+        "size": 17534340584,
+        "sha256": "998df88aa21b4cfae5053c9d37ec6040ba29566859b8e7d1619f8c9fd27e820d"
+      },
+      {
+        "component": "vae",
+        "repositoryPath": "qwen_image_2.1_vae_bf16.safetensors",
+        "localPath": "models/vae/qwen_image_2.1_vae_bf16.safetensors",
+        "size": 675509688,
+        "sha256": "bb21f7473051e1ac368515dd3f2e15cd44d7a11748ee8823e1ddca3e4876b7c9"
+      }
+    ],
+    "upstreamRepository": "Qwen/Qwen-Image-2.1-Turbo"
+  },
+  "installationCommands": [
+    "git clone --filter=blob:none --no-checkout https://github.com/Comfy-Org/ComfyUI.git image-gen/runtime/ComfyUI",
+    "git -C image-gen/runtime/ComfyUI checkout --detach 73c9bad4d21e7addbe1d13bc92eee0f1431b017d",
+    "git clone --filter=blob:none --no-checkout https://github.com/leejet/ComfyUI-GGUF.git image-gen/runtime/ComfyUI/custom_nodes/ComfyUI-GGUF",
+    "git -C image-gen/runtime/ComfyUI/custom_nodes/ComfyUI-GGUF checkout --detach 373048b8403a7820620065210a691263d4da0a61",
+    "uv python install 3.13",
+    "uv venv --python 3.13 image-gen/.venv",
+    "uv pip install --python image-gen/.venv/bin/python torch==2.13.0+cu130 torchvision torchaudio --index-url https://download.pytorch.org/whl/test/cu130",
+    "uv pip install --python image-gen/.venv/bin/python -r image-gen/runtime/ComfyUI/requirements.txt -r image-gen/runtime/ComfyUI/custom_nodes/ComfyUI-GGUF/requirements.txt",
+    "python3 scripts/package-image-workflows.py",
+    "python3 scripts/download-image-assets.py download"
+  ],
+  "updated": "2026-10-14",
+  "sampling": {
+    "steps": 8,
+    "cfg": 1.0,
+    "sampler": "euler",
+    "scheduler": "manual",
+    "sigmas": [
+      1.0,
+      0.978453,
+      0.95418,
+      0.926626,
+      0.89508,
+      0.845148,
+      0.704534,
+      0.414568,
+      0.0
+    ]
+  },
+  "supportingFiles": [
+    {
+      "repositoryPath": "README.md",
+      "localPath": "upstream/sakura/README.md",
+      "size": 28546,
+      "sha256": "7fdf12827ba497d0bec98c387f88077783408799b5686883c9996785c5e34df1"
+    },
+    {
+      "repositoryPath": "LICENSE",
+      "localPath": "upstream/sakura/LICENSE",
+      "size": 7831,
+      "sha256": "8dc973f024ff95966bea25866efa443fd16776dcb1001e681e3d467ea572b28d"
+    },
+    {
+      "repositoryPath": "NOTICE",
+      "localPath": "upstream/sakura/NOTICE",
+      "size": 833,
+      "sha256": "ee3e54afa4aba46619072faf2ac41a570cece368be8200dca9925d7f5729142f"
+    },
+    {
+      "repositoryPath": "Qwen-Image-2.1-Turbo_ComfyUI_workflow.json",
+      "localPath": "upstream/sakura/Qwen-Image-2.1-Turbo_ComfyUI_workflow.json",
+      "size": 6935,
+      "sha256": "d581e1cfdfa2c13502673c12c5b4082516cbc36c54ef464b355580b1d5c5268e"
+    },
+    {
+      "repositoryPath": "SHA256SUMS",
+      "localPath": "upstream/sakura/SHA256SUMS",
+      "size": 2013,
+      "sha256": "dd55afefb8b06c6af7ba8202f8ca4bb7ece5293760447cf437cd0fe449ac1e61"
+    }
+  ]
+}

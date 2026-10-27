@@ -1,0 +1,280 @@
+{
+  "schemaVersion": 2,
+  "defaultProfile": "q4-s",
+  "sources": {
+    "gemma-4-31b-qat-q4-0-heretic": {
+      "repository": "llmfan46/gemma-4-31B-it-qat-q4_0-uncensored-heretic-GGUF",
+      "revision": "053a14eaa2fb22e77f139d1adc5cb31960348765",
+      "nativeContext": 262144
+    },
+    "swift-1.5-qwen3.8-27b": {
+      "repository": "ukisai/Swift-1.5-Qwen3.8-27B-GGUF",
+      "revision": "a1614465cfa35d04d3e8575d713fa779662b5eab",
+      "nativeContext": 262144
+    }
+  },
+  "chatTemplates": {
+    "gemma4Canonical": {
+      "repository": "google/gemma-4-31b-it",
+      "revision": "842da3794eaa0b77d5f08bae87a17459d91ff475",
+      "file": "chat_template.jinja",
+      "path": "config/gemma4-chat-template.jinja",
+      "sha256": "ae53464bf3be25802b3a5b37def7fd89667067d7577049b3b2d74c4d8de4c6d4"
+    }
+  },
+  "benchmarkOutputTokens": 16384,
+  "interactiveOutputPolicy": {
+    "llamaServerNPredict": -1,
+    "dshMaxTokens": "contextWindow",
+    "note": "No separate interactive output cap; prompt, reasoning, tools, and answer share the configured context."
+  },
+  "deviceOrder": [
+    {
+      "cuda": "CUDA0",
+      "uuid": "GPU-SLOT-0",
+      "name": "NVIDIA GeForce RTX 4080",
+      "computeCapability": "8.9"
+    },
+    {
+      "cuda": "CUDA1",
+      "uuid": "GPU-SLOT-1",
+      "name": "NVIDIA GeForce RTX 5060 Ti",
+      "computeCapability": "12.0"
+    }
+  ],
+  "profiles": {
+    "gemma-q4": {
+      "source": "gemma-4-31b-qat-q4-0-heretic",
+      "chatTemplate": "gemma4Canonical",
+      "modelFile": "gemma-4-31B-it-qat-q4_0-uncensored-heretic-Q4_0.gguf",
+      "alias": "gemma-4-31b-it-qat-q4-0-uncensored-heretic-q4-0",
+      "displayName": "Gemma-4-31B QAT Q4_0 Uncensored Heretic",
+      "context": 65536,
+      "cacheK": "q8_0",
+      "cacheV": "q8_0",
+      "tensorSplit": "2,3",
+      "mtp": false,
+      "qualified": true,
+      "qualifiedAt": "2026-09-26T19:09:51.416593+01:00",
+      "runtime": {
+        "batchSize": 1024,
+        "ubatchSize": 256,
+        "threads": 7,
+        "threadsBatch": 8
+      }
+    },
+    "q4-s": {
+      "source": "swift-1.5-qwen3.8-27b",
+      "modelFile": "Swift-1.5-Qwen3.8-27B-Q4_K_S.gguf",
+      "alias": "swift-1.5-qwen3.8-27b-q4-k-s",
+      "displayName": "Swift 1.5 Qwen3.8-27B Q4_K_S",
+      "context": 217088,
+      "cacheK": "q8_0",
+      "cacheV": "q5_1",
+      "tensorSplit": "28,36",
+      "mtp": true,
+      "mtpDraftTokens": 3,
+      "qualified": false,
+      "runtime": {
+        "batchSize": 1024,
+        "ubatchSize": 256,
+        "threads": 7,
+        "threadsBatch": 8
+      },
+      "deploymentApproved": true,
+      "deploymentApproval": {
+        "basis": "Explicit user selection after connection checks",
+        "fullQualificationComplete": false
+      },
+      "mtpQualification": {
+        "passed": false,
+        "fullQualificationComplete": false,
+        "mode": "user-requested-minimal",
+        "draftTokens": 3,
+        "request": "benchmarks/results/performance/mtp/three-token-activation-request.json"
+      },
+      "kvContextQualification": {
+        "passed": true,
+        "scope": "general-coding-text-vision-api-soak",
+        "spec": {
+          "profile": {
+            "source": "swift-1.5-qwen3.8-27b",
+            "modelFile": "Swift-1.5-Qwen3.8-27B-Q4_K_S.gguf",
+            "alias": "swift-1.5-qwen3.8-27b-q4-k-s",
+            "displayName": "Swift 1.5 Qwen3.8-27B Q4_K_S",
+            "context": 217088,
+            "cacheK": "q8_0",
+            "cacheV": "q5_1",
+            "tensorSplit": "28,36",
+            "mtp": true,
+            "mtpDraftTokens": 3,
+            "qualified": false,
+            "runtime": {
+              "batchSize": 1024,
+              "ubatchSize": 256,
+              "threads": 7,
+              "threadsBatch": 8
+            },
+            "deploymentApproved": true,
+            "deploymentApproval": {
+              "basis": "Explicit user selection after connection checks",
+              "fullQualificationComplete": false
+            },
+            "mtpQualification": {
+              "passed": false,
+              "fullQualificationComplete": false,
+              "mode": "user-requested-minimal",
+              "draftTokens": 3,
+              "request": "benchmarks/results/performance/mtp/three-token-activation-request.json"
+            },
+            "name": "q4-s",
+            "repository": "ukisai/Swift-1.5-Qwen3.8-27B-GGUF",
+            "revision": "a1614465cfa35d04d3e8575d713fa779662b5eab",
+            "nativeContext": 262144,
+            "benchmarkOutputTokens": 16384
+          },
+          "cudaGraphs": false,
+          "affinity": null,
+          "experimentPolicy": {
+            "kind": "kv-context-v1",
+            "minimumFreeMiB": {
+              "GPU-SLOT-0": 1024,
+              "GPU-SLOT-1": 256
+            }
+          }
+        },
+        "checks": {
+          "confirmation": {
+            "sha256": "bc043fc5f07a23124e60ea669da853f3c2bbf0c1bd3d2d51fa86d131771ed9d4",
+            "passed": true
+          },
+          "coding": {
+            "sha256": "1ad3c01ca304308931f4568fce10aef878e2308a0af2391a288ca25aee75b302",
+            "passed": true
+          },
+          "timing": {
+            "sha256": "c5d6af3e89ba4ec064be755dcbb6831c4f0f5a345384bc729f24b2aea193e6ee",
+            "passed": true
+          },
+          "soak": {
+            "sha256": "3096b1b4b5fc1b9345638266c776eda2fbb897f37acc48b01113cd0ff47a7aa2",
+            "passed": true
+          }
+        },
+        "matlabTaskQualification": false
+      }
+    },
+    "q4-s-vision": {
+      "source": "swift-1.5-qwen3.8-27b",
+      "modelFile": "Swift-1.5-Qwen3.8-27B-Q4_K_S.gguf",
+      "alias": "swift-1.5-qwen3.8-27b-q4-k-s-vision",
+      "displayName": "Swift 1.5 Qwen3.8-27B Q4_K_S \u00b7 Vision",
+      "context": 180224,
+      "cacheK": "q8_0",
+      "cacheV": "q5_1",
+      "tensorSplit": "28,36",
+      "mtp": true,
+      "mtpDraftTokens": 3,
+      "qualified": false,
+      "runtime": {
+        "batchSize": 1024,
+        "ubatchSize": 256,
+        "threads": 7,
+        "threadsBatch": 8
+      },
+      "deploymentApproved": true,
+      "mmprojFile": "mmproj-Swift-1.5-Qwen3.8-27B-F16.gguf",
+      "input": [
+        "text",
+        "image"
+      ],
+      "deploymentApproval": {
+        "basis": "User-approved vision addition; two fresh GPU/image runs and all three harness image/tool checks passed",
+        "fullQualificationComplete": false,
+        "record": "benchmarks/results/q4-vision/qualification.json",
+        "harnessChecks": "benchmarks/results/q4-vision/harness-summary.json",
+        "approvedAt": "2026-10-08T20:14:56.075150+01:00"
+      },
+      "mtpQualification": {
+        "passed": false,
+        "fullQualificationComplete": false,
+        "mode": "user-requested-minimal",
+        "draftTokens": 3,
+        "request": "benchmarks/results/performance/mtp/three-token-activation-request.json"
+      },
+      "kvContextQualification": {
+        "passed": true,
+        "scope": "general-coding-text-vision-api-soak",
+        "spec": {
+          "profile": {
+            "source": "swift-1.5-qwen3.8-27b",
+            "modelFile": "Swift-1.5-Qwen3.8-27B-Q4_K_S.gguf",
+            "alias": "swift-1.5-qwen3.8-27b-q4-k-s-vision",
+            "displayName": "Swift 1.5 Qwen3.8-27B Q4_K_S \u00b7 Vision",
+            "context": 180224,
+            "cacheK": "q8_0",
+            "cacheV": "q5_1",
+            "tensorSplit": "28,36",
+            "mtp": true,
+            "mtpDraftTokens": 3,
+            "qualified": false,
+            "runtime": {
+              "batchSize": 1024,
+              "ubatchSize": 256,
+              "threads": 7,
+              "threadsBatch": 8
+            },
+            "deploymentApproved": true,
+            "mmprojFile": "mmproj-Swift-1.5-Qwen3.8-27B-F16.gguf",
+            "input": [
+              "text",
+              "image"
+            ],
+            "deploymentApproval": {
+              "basis": "User-approved vision addition; two fresh GPU/image runs and all three harness image/tool checks passed",
+              "fullQualificationComplete": false,
+              "record": "benchmarks/results/q4-vision/qualification.json",
+              "harnessChecks": "benchmarks/results/q4-vision/harness-summary.json",
+              "approvedAt": "2026-10-08T20:14:56.075150+01:00"
+            },
+            "mtpQualification": {
+              "passed": false,
+              "fullQualificationComplete": false,
+              "mode": "user-requested-minimal",
+              "draftTokens": 3,
+              "request": "benchmarks/results/performance/mtp/three-token-activation-request.json"
+            },
+            "name": "q4-s-vision",
+            "repository": "ukisai/Swift-1.5-Qwen3.8-27B-GGUF",
+            "revision": "a1614465cfa35d04d3e8575d713fa779662b5eab",
+            "nativeContext": 262144,
+            "benchmarkOutputTokens": 16384
+          },
+          "cudaGraphs": false,
+          "affinity": null,
+          "experimentPolicy": {
+            "kind": "kv-context-v1",
+            "minimumFreeMiB": {
+              "GPU-SLOT-0": 1024,
+              "GPU-SLOT-1": 256
+            }
+          }
+        },
+        "checks": {
+          "confirmation": {
+            "sha256": "ff1754dc583a8d7072286a5355038b3b7575a3b18a7033951badfc6af067ac41",
+            "passed": true
+          },
+          "soak": {
+            "sha256": "e8fac173ab20f7a64e52b0f6e8a20715433cb00374cc134d4116f638b6de427a",
+            "passed": true
+          }
+        },
+        "matlabTaskQualification": false
+      }
+    }
+  },
+  "runtime": {
+    "cudaGraphs": false
+  }
+}
