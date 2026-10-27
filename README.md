@@ -63,8 +63,8 @@ the image projector. Gemma is the short-context alternative, split the other
 way, and does not use multi-token prediction.
 
 Ollama sits behind the router as a fallback path with a single model,
-`qwen3.8-27b-q4`, a 27.3B-parameter Q4_K_M build with a 262K context, vision
-and tool support.
+`qwen3.8-27b-q4`: a 27.3B-parameter Q4_K_M build that supports a 256K context
+and runs at 128K, with vision and tool support.
 
 Download provenance, exact byte counts, and SHA-256 hashes are in
 [`models/manifest.json`](models/manifest.json). Profile settings as the launcher
