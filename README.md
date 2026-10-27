@@ -1,136 +1,158 @@
 # Local LLM setup
 
-Dual-GPU, local-first inference on a single Linux workstation: one `llama-server`
-router for text and vision, Ollama as a fallback, and self-hosted search,
-crawl, and image generation on loopback.
+Two 16 GB graphics cards, one workstation, and nothing leaving the house: text
+and vision inference, a private search and crawl stack, and on-demand image
+generation all run locally. No cloud model calls.
 
-Snapshot recorded **27 October 2026**. This repository is a point-in-time record,
-not an installer. Every value marked *verified* was read from the running system
-on that date; see [`verification/snapshot-2026-10-27.md`](verification/snapshot-2026-10-27.md)
-for the commands, results, and what could not be checked.
+This is a snapshot of the machine as it stood on **27 October 2026**. It
+describes what is installed and how it is wired, not how to install it. The
+short companion file [`verification/snapshot-2026-10-27.md`](verification/snapshot-2026-10-27.md)
+records how each claim was checked and what could not be checked.
 
-## Hardware
+## The machine
 
-| Item | Value | Source |
-|---|---|---|
-| CPU | 12th Gen Intel Core i5-12600K, 10 cores / 16 threads | `lscpu`, verified |
-| RAM | 31 GiB usable, 42 GiB swap | `free -h`, verified |
-| GPU 0 | GeForce RTX 4080, 16 GB, compute 8.9 (`AD103`, PCIe 01:00.0) | `lspci` + profile, verified |
-| GPU 1 | GeForce RTX 5060 Ti, 16 GB, compute 12.0 (`GB206`, PCIe 06:00.0) | `lspci` + profile, verified |
-| GPU link | PCIe, no NVLink | `lspci` topology |
-| Driver | NVIDIA 595.104.02, open kernel module | `/proc/driver/nvidia/version` |
-| CUDA toolkit | 13.2 (V13.2.51) | `nvcc --version` |
-| OS | Nobara Linux 44, kernel 7.2.11-200.nobara.fc44.x86_64 | `/etc/os-release` |
+An Intel i5-12600K with 16 threads and 31 GiB of memory, running Nobara 44 (a
+Fedora-based KDE distribution) on kernel 7.2.11.
 
-Two 16 GB cards, no peer access, so the layer split is what fits the model
-rather than what the interconnect allows.
+Two NVIDIA cards share the inference work:
 
-## Runtime
+| Card | Memory | Architecture | PCIe slot |
+|---|---|---:|---|
+| GeForce RTX 4080 | 16 GB | Ada, compute 8.9 | 01:00.0 |
+| GeForce RTX 5060 Ti | 16 GB | Blackwell, compute 12.0 | 06:00.0 |
 
-| Layer | Value |
-|---|---|
-| Engine | llama.cpp build `b10988`, version 0.4.1-dev |
-| Commit | `9f31776c3` (15 September 2026) |
-| CUDA build | `GGML_CUDA=ON`, `GGML_CUDA_FA=ON`, `GGML_CUDA_FA_ALL_QUANTS=OFF`, arches `89;120` |
-| Server | `llama-server` in router mode on `127.0.0.1:8080` |
-| Router policy | `max_instances 1`, `models_autoload true`, no preload: all models unloaded when idle |
-| Per-request policy | `--parallel 1`, `--n-gpu-layers all`, `--split-mode layer`, `--flash-attn on`, `--no-context-shift`, `--no-cont-batching`, `--fit off`, `--cache-prompt`, `--metrics` |
-| Threads | 7 generation, 8 batch; batch 1024 / ubatch 256 |
+They are separate cards on the PCIe bus with no NVLink and no peer access, so a
+model is split across them by layer, and the split is chosen to fit the model
+rather than to exploit an interconnect. The driver is the 595 open kernel
+module, with the CUDA 13.2 toolkit.
 
-Compiled for both architectures so one binary serves the Ada and the Blackwell
-card in a fixed `CUDA0, CUDA1` order.
+## How inference is wired
 
-## Models
+A single [llama.cpp](https://github.com/ggml-org/llama.cpp) build serves
+everything: build `b10988`, version 0.4.1-dev, compiled against
+[that pinned commit](https://github.com/ggml-org/llama.cpp/commit/9f31776c3773cf03f98535c19b7e6d394af374b4).
+It is one binary compiled for both GPU architectures, 8.9 and 12.0, with CUDA
+and Flash Attention enabled.
 
-Three catalogue entries share one resident slot; a request lazily loads the
-selected profile and evicts the previous one.
+`llama-server` runs in router mode on `127.0.0.1:8080` and holds a catalogue of
+three entries. Nothing is preloaded: the router idles at zero VRAM, loads the
+model a request asks for, and evicts it when a different one is requested. Only
+one model is ever resident.
 
-| Profile | Weights | Context | KV K/V | Layer split | MTP | Alias |
-|---|---|---:|---|---|---|---|
-| Text (default) | Swift 1.5 Qwen3.8-27B Q4_K_S, 15.2 GiB | 217,088 | q8_0 / q5_1 | 28:36 | 3 draft tokens | `swift-1.5-qwen3.8-27b-q4-k-s` |
-| Vision | same weights + F16 projector, 885 MiB | 180,224 | q8_0 / q5_1 | 28:36 | 3 draft tokens | `swift-1.5-qwen3.8-27b-q4-k-s-vision` |
-| Second | Gemma-4-31B QAT Q4_0, 16.4 GiB | 65,536 | q8_0 / q8_0 | 2:3 | off | `gemma-4-31b-it-qat-q4-0-uncensored-heretic-q4-0` |
+Each request runs under a deliberately conservative set of rules: one slot, all
+layers on the GPUs, layer-wise split across the two cards, Flash Attention on,
+no context shifting, and no continuous batching. Prompt caching and metrics are
+on. Seven threads generate and eight handle batching, with 1024-token batches
+and 256-token micro-batches.
 
-Profile settings live in [`config/profiles.json`](config/profiles.json); download
-provenance with filenames, byte counts, and SHA-256 in
-[`models/manifest.json`](models/manifest.json).
+## The models
 
-Pinned sources:
+Three profiles, each pinned to a specific upstream revision. The links open
+those revisions.
 
-| Model | Repository | Revision |
-|---|---|---|
-| Swift 1.5 Qwen3.8-27B | `ukisai/Swift-1.5-Qwen3.8-27B-GGUF` | `a1614465cfa35d04d3e8575d713fa779662b5eab` |
-| Gemma-4-31B QAT | `llmfan46/gemma-4-31B-it-qat-q4_0-uncensored-heretic-GGUF` | `053a14eaa2fb22e77f139d1adc5cb31960348765` |
-| Gemma-4 chat template | `google/gemma-4-31b-it` | `842da3794eaa0b77d5f08bae87a17459d91ff475` |
+| Profile | Model | Size | Context | KV cache | Split | Extras |
+|---|---|---:|---:|---|---|---|
+| Default text | [Swift 1.5 Qwen3.8-27B, Q4_K_S](https://huggingface.co/ukisai/Swift-1.5-Qwen3.8-27B-GGUF/tree/a1614465cfa35d04d3e8575d713fa779662b5eab) | 15.2 GiB | 217,088 | Q8_0 keys, Q5_1 values | 28:36 | 3-token multi-token prediction |
+| Vision | same weights, plus [the F16 projector](https://huggingface.co/ukisai/Swift-1.5-Qwen3.8-27B-GGUF/tree/a1614465cfa35d04d3e8575d713fa779662b5eab) | +885 MiB | 180,224 | Q8_0 keys, Q5_1 values | 28:36 | 3-token multi-token prediction, image input |
+| Second opinion | [Gemma-4-31B QAT, Q4_0](https://huggingface.co/llmfan46/gemma-4-31B-it-qat-q4_0-uncensored-heretic-GGUF/tree/053a14eaa2fb22e77f139d1adc5cb31960348765) | 16.4 GiB | 65,536 | Q8_0 keys and values | 2:3 | none; runs with [Google's canonical chat template](https://huggingface.co/google/gemma-4-31B-it/tree/842da3794eaa0b77d5f08bae87a17459d91ff475) |
 
-Ollama holds one fallback model, `qwen3.8-27b-q4:latest`: 27.3B parameters,
-Q4_K_M, 262,144-token context, vision and tools capable.
+The text profile deliberately spends its context budget on a long window: 212K
+tokens, which fits alongside its weights on the two cards because the values
+cache is compressed. The vision profile gives up some context to make room for
+the image projector. Gemma is the short-context alternative, split the other
+way, and does not use multi-token prediction.
 
-## Services
+Ollama sits behind the router as a fallback path with a single model,
+`qwen3.8-27b-q4`, a 27.3B-parameter Q4_K_M build with a 262K context, vision
+and tool support.
 
-| Port | Service | Binding | Response on 27 Oct |
-|---:|---|---|---|
-| 8080 | llama.cpp router | `127.0.0.1` | reachable, `/v1/models` lists 3 entries |
-| 11434 | Ollama | `127.0.0.1` | `200` |
-| 8888 | SearXNG | `127.0.0.1` | `200` |
-| 11235 | Crawl4AI | `127.0.0.1` | `307`, API key required |
-| 3080 | DSH Web UI, general preset | `127.0.0.1` | `401`, authentication required |
-| 3081 | DSH Web UI, second preset | `0.0.0.0` | `200` |
-| 8188 | ComfyUI | not listening | image mode stopped |
-
-Text inference, search, and crawl run as systemd user units with lingering
-enabled, so they survive logout. Image generation has its own on-demand
-lifecycle and is not part of the always-on set.
+Download provenance, exact byte counts, and SHA-256 hashes are in
+[`models/manifest.json`](models/manifest.json). Profile settings as the launcher
+reads them are in [`config/profiles.json`](config/profiles.json).
 
 ## Clients
 
-| Client | Version | Role |
+| Client | Version | What it is for |
 |---|---|---|
-| DSH | 0.2.1-rc.2 | Primary agent harness, Web UI on `:3080`, optional second preset on `:3081` |
+| DSH | 0.2.1-rc.2 | Primary agent harness, Web UI on port 3080, optional second preset on 3081 |
 | Pi | 1.4.0 | Second harness, four model choices, MCP connections |
 | Ollama CLI | 0.33.3 | Fallback inference outside the router |
 
-OpenCode was undeployed on 24 October 2026; no `opencode` binary remains on
-`PATH`. The harness set is DSH, Pi, and Ollama.
+OpenCode was removed on 24 October 2026 and no longer exists on this machine.
 
-## Private web stack
+## What listens where
 
-Search and retrieval run in rootless Podman containers, pinned by digest.
-Exact digests are kept out of this public copy; the versions identify the
-release.
+| Port | Service | Reachable from | State on 27 October |
+|---:|---|---|---|
+| 8080 | llama.cpp router | loopback | serving three catalogue entries |
+| 11434 | Ollama | loopback | up |
+| 8888 | SearXNG | loopback | up |
+| 11235 | Crawl4AI | loopback | up, API key required |
+| 3080 | DSH Web UI | loopback | up, authentication required |
+| 3081 | DSH Web UI, second preset | all interfaces | up |
+| 8188 | ComfyUI | not running | image mode stopped |
 
-| Component | Version | Source |
+Text inference, search, and crawl are systemd user services with lingering
+enabled, so they survive logout. Image generation starts and stops on demand and
+is not part of the always-on set.
+
+## Private search and retrieval
+
+Web search and page retrieval run in rootless Podman containers, both built for
+`linux/amd64`, both pinned by digest at deployment:
+
+| Component | Version | Upstream |
 |---|---|---|
-| SearXNG | 2026.9.25-12f8b6515 | [ghcr.io/searxng/searxng](https://github.com/searxng/searxng/pkgs/container/searxng) |
-| Crawl4AI | 0.9.4 | [docker.io/unclecode/crawl4ai](https://hub.docker.com/r/unclecode/crawl4ai) |
+| SearXNG | 2026.9.25 | [ghcr.io/searxng/searxng](https://github.com/searxng/searxng/pkgs/container/searxng) |
+| Crawl4AI | 0.9.4 | [docker.io/unclecode/crawl4ai](https://hub.docker.com/r/unclecode/crawl4ai/tags?name=0.9.4) |
 
-Both are `linux/amd64`. Crawl4AI runs without GPU access or cloud-model
-credentials, keeps its default SSRF protections, and has hooks and internal-URL
-access disabled. The MCP gateway in front of them exposes only `web_search`,
-`web_fetch`, and `web_crawl`; crawl accepts explicit URLs and never follows
-links.
+Crawl4AI runs without GPU access and without cloud-model credentials, keeps its
+default SSRF protections, and has hooks and internal-URL access disabled. The
+MCP gateway in front of the pair exposes exactly three tools: `web_search`,
+`web_fetch`, and `web_crawl`. Crawl takes an explicit list of URLs and never
+follows links on its own.
 
 ## Image generation
 
-A separate stack, not wired into the text harnesses.
+A separate stack, kept apart from text inference and not exposed to the agent
+harnesses.
 
 | Item | Value |
 |---|---|
-| Stack | ComfyUI v0.37.0 (`73c9bad`), ComfyUI-GGUF (`373048b`), PyTorch 2.13.0+cu130, Python 3.13.14 |
-| Diffusion | Sakura Qwen Image 2.1 Turbo Q4_K_M, 3.77 GiB |
-| Text encoder | Qwen3VL 8B, BF16 |
-| VAE | Qwen Image 2.1 VAE, BF16 |
-| Sampler | 8 Euler steps, CFG 1.0, fixed sigma |
+| Runtime | ComfyUI [0.37.0](https://github.com/Comfy-Org/ComfyUI/releases/tag/v0.37.0) with [ComfyUI-GGUF](https://github.com/leejet/ComfyUI-GGUF/commit/373048b8403a7820620065210a691263d4da0a61), PyTorch 2.13.0+cu130, Python 3.13 |
+| Diffusion model | [Sakura Qwen Image 2.1 Turbo, Q4_K_M](https://huggingface.co/webmp3/Sakura-Qwen-Image-2.1-Turbo-Uncensored-GGUF), 3.77 GiB |
+| Text encoder | Qwen3VL 8B, BF16, 16.3 GiB |
+| VAE | Qwen Image 2.1, BF16 |
+| Sampling | 8 Euler steps, CFG 1.0, fixed sigma schedule |
 | Licence | Qwen Research License |
-| GPU | RTX 5060 Ti, started on demand |
+| Runs on | the RTX 5060 Ti, on demand |
 
-Full asset manifest: [`image-gen/manifest.json`](image-gen/manifest.json).
+It derives from [Qwen-Image-2.1-Turbo](https://huggingface.co/Qwen/Qwen-Image-2.1-Turbo).
+The full asset record is in [`image-gen/manifest.json`](image-gen/manifest.json).
 
-## Design notes
+## Design choices
 
-- Local inference, search, crawl, and image generation on one host; no cloud model calls.
-- Weights pinned by repository revision and SHA-256; container images pinned by digest.
-- Lazy router: no VRAM held until the first request, one model resident at a time.
-- Backend services on loopback; the DSH Web UI requires authentication.
-- Separate lifecycles for always-on text workloads and on-demand image workloads.
-- One binary for two GPU architectures, with the device order fixed by UUID.
+- Everything that matters runs locally: inference, search, crawl, image generation.
+- Models are pinned by revision and hash; container images by digest, so a
+  re-tagged upstream release cannot silently replace what is installed.
+- The router holds no VRAM when idle and never keeps two models in memory.
+- Backend services stay on loopback, and the Web UI requires authentication.
+- Text and image workloads have separate lifecycles, so an image job cannot
+  disturb an inference session.
+- One binary covers two GPU architectures, with the device order fixed so the
+  layer split is always read the same way.
+
+## The rest of this repository
+
+The prose above is the readable layer. Two kinds of file sit underneath it:
+
+| File | Purpose |
+|---|---|
+| [`config/profiles.json`](config/profiles.json) | The profile settings the launcher reads, with local paths and device identifiers removed |
+| [`models/manifest.json`](models/manifest.json) | Download record: sources, byte counts, and hashes for the weights |
+| [`web-stack/images.json`](web-stack/images.json) | Container versions and tags, without digests |
+| [`image-gen/manifest.json`](image-gen/manifest.json) | ComfyUI revisions and image model assets |
+| [`verification/snapshot-2026-10-27.md`](verification/snapshot-2026-10-27.md) | What was checked, how, and the limits of the check |
+
+Those JSON files keep exact identifiers because they are meant to be machine
+checked. Nothing in them is needed to read this page.
