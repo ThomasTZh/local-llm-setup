@@ -2,7 +2,7 @@
 Description=llama.cpp catalogue router (idle until the first request)
 After=network-online.target
 Wants=network-online.target
-Documentation=https://github.com/ThomasZhangTY/local-llm-setup
+Documentation=https://github.com/ThomasTZh/local-llm-setup
 
 [Service]
 Type=simple
