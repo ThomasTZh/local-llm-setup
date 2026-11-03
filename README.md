@@ -1,182 +1,190 @@
 # Local LLM setup
 
-Two 16 GB graphics cards, one workstation, and nothing leaving the house: text
-and vision inference, a private search and crawl stack, and on-demand image
-generation all run locally. No cloud model calls.
+Two 16 GB graphics cards, one workstation, and no cloud model calls: text and
+vision inference, private search and crawl, and on-demand image generation run
+locally. This repository pins the engine commit, model revisions and hashes,
+container versions, and service units needed to rebuild that deployment on
+comparable hardware. Each description is backed by a check in
+[`verification/`](verification/snapshot-2026-10-27.md), and the steps that were
+never run are named below rather than implied.
 
-This is a snapshot of the machine as it stood on **27 October 2026**. It
-describes what is installed and how it is wired, not how to install it. The
-short companion file [`verification/snapshot-2026-10-27.md`](verification/snapshot-2026-10-27.md)
-records how each claim was checked and what could not be checked.
+## Purpose and gaps
 
-## The machine
+The repository exists so that a working local-AI deployment can be rebuilt from
+a written record instead of from a running machine.
 
-An Intel i5-12600K with 16 threads and 31 GiB of memory, running Nobara 44 (a
-Fedora-based KDE distribution) on kernel 7.2.11.
+- **Gap:** upstream documentation covers each component in isolation [1][2][5].
+  It does not pin the engine build, weight revisions, hashes, and container
+  versions that worked together on two GPUs, and it does not separate claims
+  that were checked from claims that were not.
+- **Approach:** publish those pinned identifiers, a scripted recipe under
+  [`setup/`](setup/README.md), and a verification record that marks what was not
+  run.
 
-Two NVIDIA cards share the inference work:
+## Features
 
-| Card | Memory | Architecture | PCIe slot |
-|---|---|---:|---|
-| GeForce RTX 4080 | 16 GB | Ada, compute 8.9 | 01:00.0 |
-| GeForce RTX 5060 Ti | 16 GB | Blackwell, compute 12.0 | 06:00.0 |
+- **Text and vision inference:** a llama.cpp [1] router on `127.0.0.1:8080`
+  holds three profiles and loads one at a time.
+- **Long context on 30 GB:** 217,088 tokens for text and 180,224 for vision,
+  using Q8_0 key and Q5_1 value caches and a 28:36 layer split.
+- **Zero idle VRAM:** nothing is preloaded; `GET /v1/models` lists three ids and
+  a request loads only the model it names.
+- **Fallback model:** Ollama [10] serves `qwen3.8-27b-q4` on `127.0.0.1:11434`
+  outside the router.
+- **Private search and crawl:** SearXNG [7] on `8888` and Crawl4AI [8] on
+  `11235`, both in rootless Podman containers, exposed as three tools
+  (`web_search`, `web_fetch`, `web_crawl`).
+- **On-demand images:** ComfyUI [6] with Sakura Qwen Image 2.1 Turbo [5] on the
+  second card, started and stopped independently of inference.
+- **Rebuild and check:** `setup/preflight.sh`, `build-llama.sh`,
+  `download-models.sh`, `router/install-router.sh`, `router/start-router.sh`
+  and `verify.sh`; steps 0 to 4 take about an hour, mostly build and download.
 
-They are separate cards on the PCIe bus with no NVLink and no peer access, so a
-model is split across them by layer, and the split is chosen to fit the model
-rather than to exploit an interconnect. The driver is the 595 open kernel
-module, with the CUDA 13.2 toolkit.
+## Not for / limitations
 
-## How inference is wired
+- **Not for one 16 GB card.** The catalogue assumes roughly 30 GB across two
+  cards; one 16 GB card cannot hold the default profile, and one 24 GB card
+  would need a shorter context.
+- **Not a multi-user service.** Every service binds to loopback except the
+  second DSH preset on `3081`. One model is resident at a time, and a request
+  that switches profiles waits for the load.
+- **No performance figures.** Throughput, latency, and VRAM-in-use measurements
+  were out of scope, so there are no speed numbers to compare against. The
+  checks below cover correctness, not speed.
+- **Some checks could not run.** GPU memory in use, PCIe topology, and
+  peer-access tests need NVIDIA device nodes that the recording shell did not
+  have; the 16 GB figures are the rated capacity of each card.
+- **Not everything was executed.** A clean-machine run of the full sequence, the
+  build script, and the download script were not run (existing artifacts were
+  hashed instead). The Podman install path, starting ComfyUI, and `verify.sh
+  --load` were also untested. Details are in [`setup/README.md`](setup/README.md)
+  and the verification record.
+- **Weights and container images are not redistributed.** They are fetched from
+  upstream under their own licences; see [Licenses](#licenses).
+- **No orchestration or remote access.** This is a single-workstation setup, not
+  a cluster or a hosted service.
 
-A single [llama.cpp](https://github.com/ggml-org/llama.cpp) build serves
-everything: build `b10988`, version 0.4.1-dev, compiled against
-[that pinned commit](https://github.com/ggml-org/llama.cpp/commit/9f31776c3773cf03f98535c19b7e6d394af374b4).
-It is one binary compiled for both GPU architectures, 8.9 and 12.0, with CUDA
-and Flash Attention enabled.
+## Reproduction environment
 
-`llama-server` runs in router mode on `127.0.0.1:8080` and holds a catalogue of
-three entries. Nothing is preloaded: the router idles at zero VRAM, loads the
-model a request asks for, and evicts it when a different one is requested. Only
-one model is ever resident.
+| Component | Requirement |
+| --- | --- |
+| Operating system | Nobara 44 (Fedora-based KDE), kernel 7.2.11, x86_64 |
+| Language/compiler | `g++` and CMake for the llama.cpp build; CUDA toolkit 13.2 (`nvcc` V13.2.51); Python 3.13 for the image stack |
+| Hardware | Intel i5-12600K, 10 cores and 16 threads, 31 GiB RAM; RTX 4080 16 GB (Ada, compute 8.9) and RTX 5060 Ti 16 GB (Blackwell, compute 12.0), no NVLink; NVIDIA 595.104.02 open kernel module |
+| Libraries | llama.cpp b10988 (commit `9f31776c3`), Ollama 0.33.3, PyTorch 2.13.0+cu130, ComfyUI 0.37.0, ComfyUI-GGUF `373048b` |
+| Input | None. The recipe downloads 34 GB of weights and verifies four SHA-256 values |
 
-Each request runs under a deliberately conservative set of rules: one slot, all
-layers on the GPUs, layer-wise split across the two cards, Flash Attention on,
-no context shifting, and no continuous batching. Prompt caching and metrics are
-on. Seven threads generate and eight handle batching, with 1024-token batches
-and 256-token micro-batches.
+## Install and run
 
-## The models
+Run from the repository root. The recipe installs into `AI_HOME`, default
+`~/local-llm-setup`.
 
-Three profiles, each pinned to a specific upstream revision. The links open
-those revisions.
+```bash
+export AI_HOME="$HOME/local-llm-setup"
 
-| Profile | Model | Size | Context | KV cache | Split | Extras |
-|---|---|---:|---:|---|---|---|
-| Default text | [Swift 1.5 Qwen3.8-27B, Q4_K_S](https://huggingface.co/ukisai/Swift-1.5-Qwen3.8-27B-GGUF/tree/a1614465cfa35d04d3e8575d713fa779662b5eab) | 15.2 GiB | 217,088 | Q8_0 keys, Q5_1 values | 28:36 | 3-token multi-token prediction |
-| Vision | same weights, plus [the F16 projector](https://huggingface.co/ukisai/Swift-1.5-Qwen3.8-27B-GGUF/tree/a1614465cfa35d04d3e8575d713fa779662b5eab) | +885 MiB | 180,224 | Q8_0 keys, Q5_1 values | 28:36 | 3-token multi-token prediction, image input |
-| Second opinion | [Gemma-4-31B QAT, Q4_0](https://huggingface.co/llmfan46/gemma-4-31B-it-qat-q4_0-uncensored-heretic-GGUF/tree/053a14eaa2fb22e77f139d1adc5cb31960348765) | 16.4 GiB | 65,536 | Q8_0 keys and values | 2:3 | none; runs with [Google's canonical chat template](https://huggingface.co/google/gemma-4-31B-it/tree/842da3794eaa0b77d5f08bae87a17459d91ff475) |
+# 0. check GPUs, toolkit, disk, and memory; changes nothing
+bash setup/preflight.sh
 
-The text profile deliberately spends its context budget on a long window: 212K
-tokens, which fits alongside its weights on the two cards because the values
-cache is compressed. The vision profile gives up some context to make room for
-the image projector. Gemma is the short-context alternative, split the other
-way, and does not use multi-token prediction.
+# 1. build llama.cpp at the pinned commit with CUDA and Flash Attention
+bash setup/build-llama.sh
 
-Ollama sits behind the router as a fallback path with a single model,
-`qwen3.8-27b-q4`: a 27.3B-parameter Q4_K_M build that supports a 256K context
-and runs at 128K, with vision and tool support.
+# 2. fetch 34 GB of weights and verify four SHA-256 values
+bash setup/download-models.sh
 
-Download provenance, exact byte counts, and SHA-256 hashes are in
-[`models/manifest.json`](models/manifest.json). Profile settings as the launcher
-reads them are in [`config/profiles.json`](config/profiles.json).
+# 3. render the router preset and start it on 127.0.0.1:8080
+bash setup/router/install-router.sh
+bash setup/router/start-router.sh
 
-## Clients
+# 4. verify endpoints, catalogue, and hashes; --load forces one generation
+bash setup/verify.sh
+bash setup/verify.sh --load
+```
 
-| Client | Version | What it is for |
-|---|---|---|
-| DSH | 0.2.1-rc.2 | Primary agent harness, Web UI on port 3080, optional second preset on 3081 |
-| Pi | 1.4.0 | Second harness, four model choices, MCP connections |
-| Ollama CLI | 0.33.3 | Fallback inference outside the router |
+Optional additions:
 
-OpenCode was removed on 24 October 2026 and no longer exists on this machine.
+```bash
+bash setup/web-stack/install-web-stack.sh   # SearXNG and Crawl4AI
+# image generation: see setup/image-gen/README.md
+```
 
-## What listens where
-
-| Port | Service | Reachable from | State on 27 October |
-|---:|---|---|---|
-| 8080 | llama.cpp router | loopback | serving three catalogue entries |
-| 11434 | Ollama | loopback | up |
-| 8888 | SearXNG | loopback | up |
-| 11235 | Crawl4AI | loopback | up, API key required |
-| 3080 | DSH Web UI | loopback | up, authentication required |
-| 3081 | DSH Web UI, second preset | all interfaces | up |
-| 8188 | ComfyUI | not running | image mode stopped |
-
-Text inference, search, and crawl are systemd user services with lingering
-enabled, so they survive logout. Image generation starts and stops on demand and
-is not part of the always-on set.
-
-## Private search and retrieval
-
-Web search and page retrieval run in rootless Podman containers, both built for
-`linux/amd64`, both pinned by digest at deployment:
-
-| Component | Version | Upstream |
-|---|---|---|
-| SearXNG | 2026.9.25 | [ghcr.io/searxng/searxng](https://github.com/searxng/searxng/pkgs/container/searxng) |
-| Crawl4AI | 0.9.4 | [docker.io/unclecode/crawl4ai](https://hub.docker.com/r/unclecode/crawl4ai/tags?name=0.9.4) |
-
-Crawl4AI runs without GPU access and without cloud-model credentials, keeps its
-default SSRF protections, and has hooks and internal-URL access disabled. The
-MCP gateway in front of the pair exposes exactly three tools: `web_search`,
-`web_fetch`, and `web_crawl`. Crawl takes an explicit list of URLs and never
-follows links on its own.
-
-## Image generation
-
-A separate stack, kept apart from text inference and not exposed to the agent
-harnesses.
-
-| Item | Value |
-|---|---|
-| Runtime | ComfyUI [0.37.0](https://github.com/Comfy-Org/ComfyUI/releases/tag/v0.37.0) with [ComfyUI-GGUF](https://github.com/leejet/ComfyUI-GGUF/commit/373048b8403a7820620065210a691263d4da0a61), PyTorch 2.13.0+cu130, Python 3.13 |
-| Diffusion model | [Sakura Qwen Image 2.1 Turbo, Q4_K_M](https://huggingface.co/webmp3/Sakura-Qwen-Image-2.1-Turbo-Uncensored-GGUF), 3.77 GiB |
-| Text encoder | Qwen3VL 8B, BF16, 16.3 GiB |
-| VAE | Qwen Image 2.1, BF16 |
-| Sampling | 8 Euler steps, CFG 1.0, fixed sigma schedule |
-| Licence | Qwen Research License |
-| Runs on | the RTX 5060 Ti, on demand |
-
-It derives from [Qwen-Image-2.1-Turbo](https://huggingface.co/Qwen/Qwen-Image-2.1-Turbo).
-The full asset record is in [`image-gen/manifest.json`](image-gen/manifest.json).
-
-## Design choices
-
-- Everything that matters runs locally: inference, search, crawl, image generation.
-- Models are pinned by revision and hash; container images by digest, so a
-  re-tagged upstream release cannot silently replace what is installed. The
-  rebuild scripts use image tags; pin the digests yourself if you want the same
-  guarantee.
-- The router holds no VRAM when idle and never keeps two models in memory.
-- Backend services stay on loopback, and the Web UI requires authentication.
-- Text and image workloads have separate lifecycles, so an image job cannot
-  disturb an inference session.
-- One binary covers two GPU architectures, with the device order fixed so the
-  layer split is always read the same way.
-
-## Rebuild it yourself
-
-Everything needed to stand this up on similar hardware is in this repository:
-pinned engine commit, pinned weights with hashes, the router preset, and the
-service units.
-
-| Step | Command | What it does |
-|---|---|---|
-| 0 | `bash setup/preflight.sh` | checks GPUs, toolkit, disk, memory |
-| 1 | `bash setup/build-llama.sh` | builds llama.cpp at the pinned commit |
-| 2 | `bash setup/download-models.sh` | fetches 34 GB of weights and verifies every hash |
-| 3 | `bash setup/router/install-router.sh`, then `start-router.sh` | renders the preset, serves three models |
-| 4 | `bash setup/verify.sh --load` | proves it end to end with one generation |
-| 5 | `bash setup/web-stack/install-web-stack.sh` | optional: private search and crawl |
-| 6 | [`setup/image-gen/README.md`](setup/image-gen/README.md) | optional: ComfyUI image generation |
-
-Requirements, the tuning points for different cards, and the short list of steps
-that were not executed on the recorded machine are in
+Expected output: `GET /v1/models` lists three ids with nothing loaded;
+`verify.sh` reports the router, the three model ids, both web services when
+installed, and three matching weight hashes; `verify.sh --load` returns a short
+reply. Requirements, per-card tuning, and the exact unexecuted steps are in
 [`setup/README.md`](setup/README.md).
 
-## The rest of this repository
+## Layout
 
-The prose above is the readable layer. Underneath it sit two kinds of file: a
-runnable recipe and machine-checkable records.
+| Component | Path | Contents | Class |
+| --- | --- | --- | --- |
+| Project description | `README.md` | This page | Original |
+| Rebuild recipe | `setup/` | Seven scripts, three service units, router preset template, example environment files | Original |
+| Launcher profiles | `config/profiles.json` | Context, cache, split, and template settings; local paths and device identifiers removed | Original |
+| Weight record | `models/manifest.json` | Repositories, revisions, byte counts, SHA-256 hashes | Original |
+| Container record | `web-stack/images.json` | SearXNG and Crawl4AI versions and tags; digests omitted | Original |
+| Image stack record | `image-gen/manifest.json` | ComfyUI revisions and asset hashes | Original |
+| Verification record | `verification/` | What was checked, how, and what was not | Original |
+| llama.cpp | — | b10988, commit `9f31776c3`; MIT [1] | Third-party |
+| Swift 1.5 Qwen3.8-27B | — | Revision `a1614465`, Q4_K_S weights plus F16 projector [2] | Third-party |
+| Gemma-4-31B QAT Q4_0 | — | Revision `053a14ea` [3], with the canonical chat template from `google/gemma-4-31B-it` [4] | Third-party |
+| Sakura Qwen Image 2.1 Turbo | — | Revision `583e2bf9`, Qwen Research Licence [5] | Third-party |
+| ComfyUI and ComfyUI-GGUF | — | 0.37.0 and `373048b`; GPL-3.0 and Apache-2.0 [6] | Third-party |
+| SearXNG | — | 2026.9.25; AGPL-3.0 [7] | Third-party |
+| Crawl4AI | — | 0.9.4; Apache-2.0 [8] | Third-party |
+| Ollama | — | 0.33.3 client and server; MIT [10] | Third-party |
 
-| Path | Purpose |
-|---|---|
-| [`setup/`](setup/README.md) | Scripts and config to rebuild the deployment, start to finish |
-| [`config/profiles.json`](config/profiles.json) | The profile settings the launcher reads, with local paths and device identifiers removed |
-| [`models/manifest.json`](models/manifest.json) | Download record: sources, byte counts, and hashes for the weights |
-| [`web-stack/images.json`](web-stack/images.json) | Container versions and tags, without digests |
-| [`image-gen/manifest.json`](image-gen/manifest.json) | ComfyUI revisions and image model assets |
-| [`verification/snapshot-2026-10-27.md`](verification/snapshot-2026-10-27.md) | What was checked, how, and the limits of the check |
+No upstream file is copied into this repository. The third-party rows are
+fetched during installation and keep their own licences.
 
-Those JSON files keep exact identifiers because they are meant to be machine
-checked. Nothing in them is needed to read this page.
+## Results
+
+| Check | Conditions | Result |
+| --- | --- | --- |
+| Weight integrity | Four files on disk, SHA-256 recomputed | 4/4 match [`models/manifest.json`](models/manifest.json); prefixes `46a360c2…`, `daa1116c…`, `b51c17e9…`, `ae53464b…` |
+| Model catalogue | `GET /v1/models` on the running router | Three ids, all unloaded |
+| Service ports | One HTTP request per port | 8080 router metadata; 11434, 8888, and 3081 return 200; 11235 returns 307 asking for a key; 3080 returns 401; 8188 refuses a connection |
+| Recipe scripts | Shell syntax check, all seven scripts | Pass |
+| Router preset | Started from the rendered preset on an alternate port without local tooling | Role `router`, `max_instances 1`, three expected model ids |
+| `verify.sh` | Against the live services | Pass: router, three model ids, both web services, three weight hashes |
+| Upstream links | One request per link | All resolve. The Sakura revision recorded at download now returns 404 after an upstream history rewrite, so the model is linked by repository and local hashes remain the integrity check |
+
+No throughput, latency, or VRAM measurement was produced. Those numbers are
+absent from this release, not merely unlisted.
+
+## Acknowledgements
+
+- The llama.cpp [1] authors for the engine, and the model publishers [2][3][4]
+  for weights and chat templates.
+- Sakura Qwen Image 2.1 Turbo [5] builds on Qwen-Image-2.1-Turbo [9]; both are
+  used under the Qwen Research Licence.
+- The ComfyUI and ComfyUI-GGUF maintainers [6], SearXNG [7], and Crawl4AI [8]
+  provide the runtimes behind the optional stacks.
+- Ollama [10] provides the fallback model server.
+- DSH and Pi act as clients in the recorded deployment; neither is distributed
+  here.
+
+## References
+
+1. ggml-org. *llama.cpp*, commit `9f31776c3773cf03f98535c19b7e6d394af374b4`, MIT Licence. <https://github.com/ggml-org/llama.cpp/commit/9f31776c3773cf03f98535c19b7e6d394af374b4>
+2. ukisai. *Swift-1.5-Qwen3.8-27B-GGUF*, revision `a1614465cfa35d04d3e8575d713fa779662b5eab`; licence as stated on the model card. <https://huggingface.co/ukisai/Swift-1.5-Qwen3.8-27B-GGUF/tree/a1614465cfa35d04d3e8575d713fa779662b5eab>
+3. llmfan46. *gemma-4-31B-it-qat-q4_0-uncensored-heretic-GGUF*, revision `053a14eaa2fb22e77f139d1adc5cb31960348765`, Apache-2.0. <https://huggingface.co/llmfan46/gemma-4-31B-it-qat-q4_0-uncensored-heretic-GGUF/tree/053a14eaa2fb22e77f139d1adc5cb31960348765>
+4. Google. *gemma-4-31B-it*, revision `842da3794eaa0b77d5f08bae87a17459d91ff475`, `chat_template.jinja`. <https://huggingface.co/google/gemma-4-31B-it/tree/842da3794eaa0b77d5f08bae87a17459d91ff475>
+5. webmp3. *Sakura-Qwen-Image-2.1-Turbo-Uncensored-GGUF*, revision `583e2bf97f2df7b6e194df07a2f4d8185d7989c1`, Qwen Research Licence. <https://huggingface.co/webmp3/Sakura-Qwen-Image-2.1-Turbo-Uncensored-GGUF>
+6. Comfy-Org. *ComfyUI* 0.37.0, commit `73c9bad4d21e7addbe1d13bc92eee0f1431b017d`, GPL-3.0. <https://github.com/Comfy-Org/ComfyUI/releases/tag/v0.37.0>; leejet. *ComfyUI-GGUF*, commit `373048b8403a7820620065210a691263d4da0a61`, Apache-2.0. <https://github.com/leejet/ComfyUI-GGUF/commit/373048b8403a7820620065210a691263d4da0a61>
+7. SearXNG. *SearXNG* 2026.9.25, AGPL-3.0; container `ghcr.io/searxng/searxng`. <https://github.com/searxng/searxng/pkgs/container/searxng>
+8. UncleCode. *Crawl4AI* 0.9.4, Apache-2.0; image `docker.io/unclecode/crawl4ai`. <https://hub.docker.com/r/unclecode/crawl4ai/tags?name=0.9.4>
+9. Qwen. *Qwen-Image-2.1-Turbo*, base model for [5]. <https://huggingface.co/Qwen/Qwen-Image-2.1-Turbo>
+10. Ollama. *Ollama* 0.33.3, MIT Licence. <https://ollama.com>
+
+## Licenses
+
+- **Original files:** `README.md`, `setup/`, `config/`, `models/`, `web-stack/`,
+  `image-gen/`, and `verification/`. No licence file is included in this
+  repository yet, so no licence is granted for reuse; add one before
+  redistributing these files.
+- **Third-party components:** not redistributed here. Each keeps its upstream
+  licence: llama.cpp MIT [1], ComfyUI GPL-3.0 [6], ComfyUI-GGUF Apache-2.0 [6],
+  SearXNG AGPL-3.0 [7], Crawl4AI Apache-2.0 [8], Ollama MIT [10], and the model
+  weights under the terms on their model cards [2][3][4][5].
+- **Obtained separately:** weights, container images, and toolchains are
+  downloaded during installation and are never bundled with the repository.
