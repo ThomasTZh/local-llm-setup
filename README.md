@@ -1,12 +1,10 @@
 # Local LLM setup
 
-Two 16 GB graphics cards, one workstation, and no cloud model calls: text and
-vision inference, private search and crawl, and on-demand image generation run
-locally. This repository pins the engine commit, model revisions and hashes,
-container versions, and service units needed to rebuild that deployment on
-comparable hardware. Each description is backed by a check in
-[`verification/`](verification/snapshot-2026-10-27.md), and the steps that were
-never run are named below rather than implied.
+This repository records how to run several AI tools on one desktop computer, with
+no cloud service and no internet connection. It lists the exact programs, files,
+and settings that worked together, so the same setup can be rebuilt on a similar
+machine. Each claim is backed by a check, and steps that were never run are
+marked as untested.
 
 ## Purpose and gaps
 
