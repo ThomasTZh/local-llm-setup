@@ -37,6 +37,9 @@ a written record instead of from a running machine.
 - **Rebuild and check:** `setup/preflight.sh`, `build-llama.sh`,
   `download-models.sh`, `router/install-router.sh`, `router/start-router.sh`
   and `verify.sh`; steps 0 to 4 take about an hour, mostly build and download.
+- **Menu entry for start and stop:** `bash launchers/install-launcher.sh` adds
+  one application-menu entry that starts the same router and stops it cleanly
+  with Ctrl+C. It opens no browser.
 
 ## Not for / limitations
 
@@ -55,8 +58,10 @@ a written record instead of from a running machine.
 - **Not everything was executed.** A clean-machine run of the full sequence, the
   build script, and the download script were not run (existing artifacts were
   hashed instead). The Podman install path, starting ComfyUI, and `verify.sh
-  --load` were also untested. Details are in [`setup/README.md`](setup/README.md)
-  and the verification record.
+  --load` were also untested. The launcher was run from a copy of this tree with
+  the recorded build and weights; a clean-machine run and a literal file-manager
+  double-click were not repeated. Details are in
+  [`setup/README.md`](setup/README.md) and the verification record.
 - **Weights and container images are not redistributed.** They are fetched from
   upstream under their own licences; see [Licenses](#licenses).
 - **No orchestration or remote access.** This is a single-workstation setup, not
@@ -102,13 +107,16 @@ Optional additions:
 
 ```bash
 bash setup/web-stack/install-web-stack.sh   # SearXNG and Crawl4AI
+bash launchers/install-launcher.sh          # menu entry for the router
 # image generation: see setup/image-gen/README.md
 ```
 
 Expected output: `GET /v1/models` lists three ids with nothing loaded;
 `verify.sh` reports the router, the three model ids, both web services when
 installed, and three matching weight hashes; `verify.sh --load` returns a short
-reply. Requirements, per-card tuning, and the exact unexecuted steps are in
+reply. The launcher installs a menu entry that starts the same router and stops
+it with Ctrl+C; see [`launchers/README.md`](launchers/README.md). Requirements,
+per-card tuning, and the exact unexecuted steps are in
 [`setup/README.md`](setup/README.md).
 
 ## Layout
@@ -117,6 +125,7 @@ reply. Requirements, per-card tuning, and the exact unexecuted steps are in
 | --- | --- | --- | --- |
 | Project description | `README.md` | This page | Original |
 | Rebuild recipe | `setup/` | Seven scripts, three service units, router preset template, example environment files | Original |
+| Double-click launcher | `launchers/` | Supervisor, installer, uninstaller, and usage note | Original |
 | Launcher profiles | `config/profiles.json` | Context, cache, split, and template settings; local paths and device identifiers removed | Original |
 | Weight record | `models/manifest.json` | Repositories, revisions, byte counts, SHA-256 hashes | Original |
 | Container record | `web-stack/images.json` | SearXNG and Crawl4AI versions and tags; digests omitted | Original |
@@ -143,6 +152,10 @@ fetched during installation and keep their own licences.
 | Service ports | One HTTP request per port | 8080 router metadata; 11434, 8888, and 3081 return 200; 11235 returns 307 asking for a key; 3080 returns 401; 8188 refuses a connection |
 | Recipe scripts | Shell syntax check, all seven scripts | Pass |
 | Router preset | Started from the rendered preset on an alternate port without local tooling | Role `router`, `max_instances 1`, three expected model ids |
+| Launcher start and stop | Release-tree copy, `AI_HOME` pointing at the recorded build and weights, port 8080 | Started idle, `/health` returned 200, catalogue listed three unloaded ids; one Ctrl+C exited 0, closed the port, and removed the process group |
+| Launcher desktop entry | Temporary `XDG_DATA_HOME`, `desktop-file-validate` | Entry and generated wrapper written with absolute paths; validation pass; uninstaller removed both |
+| Launcher window | Generated entry launched through `kioclient5 exec` | Konsole opened, router reached `/health`, one SIGINT closed the supervisor and the window; browser opening is disabled |
+| Launcher scripts | `bash -n` on both shell scripts, `python3 -m py_compile` on the supervisor | Pass |
 | `verify.sh` | Against the live services | Pass: router, three model ids, both web services, three weight hashes |
 | Upstream links | One request per link | All resolve. The Sakura revision recorded at download now returns 404 after an upstream history rewrite, so the model is linked by repository and local hashes remain the integrity check |
 
@@ -176,9 +189,9 @@ absent from this release, not merely unlisted.
 
 ## Licenses
 
-- **Original files:** `README.md`, `setup/`, `config/`, `models/`, `web-stack/`,
-  `image-gen/`, and `verification/`. No licence file is included in this
-  repository yet, so no licence is granted for reuse; add one before
+- **Original files:** `README.md`, `launchers/`, `setup/`, `config/`, `models/`,
+  `web-stack/`, `image-gen/`, and `verification/`. No licence file is included in
+  this repository yet, so no licence is granted for reuse; add one before
   redistributing these files.
 - **Third-party components:** not redistributed here. Each keeps its upstream
   licence: llama.cpp MIT [1], ComfyUI GPL-3.0 [6], ComfyUI-GGUF Apache-2.0 [6],

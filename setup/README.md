@@ -97,6 +97,9 @@ loginctl enable-linger "$USER"     # keep it running after logout
 The unit assumes `~/local-llm-setup`; edit the two paths if you installed
 elsewhere.
 
+For a desktop menu entry that starts the same script and stops it with Ctrl+C,
+see [`../launchers/README.md`](../launchers/README.md).
+
 ## Step 4: verify
 
 ```bash
